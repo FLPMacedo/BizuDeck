@@ -11,9 +11,6 @@ audios/
 *.log
 logs/
 
-# Pasta de exemplos extraída (gerada pelo .exe — bundle tem original)
-# Mantém o original em exemplos/ pra rodar do código-fonte
-
 # PyInstaller build artifacts
 build/
 dist/
@@ -27,6 +24,16 @@ config_v2.json
 .claude/
 .idea/
 .vscode/
+
+# Material de produção do canal (não faz parte do software)
+Roteiro_*.md
+Roteiro_*.pdf
+Descricao_*.md
+Descricao_*.pdf
+gerar_roteiro_pdf.py
+gerar_manual.py
+_release_notes*.md
+_teste_*.py
 
 # Arquivos temporários
 *.tmp
