@@ -1,0 +1,5 @@
+edge-tts>=7.2.8
+customtkinter>=5.2.2
+pygame>=2.6.1
+genanki>=0.13.1
+reportlab>=4.5.1

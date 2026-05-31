@@ -1,0 +1,33 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Output dos quizzes gerados (áudios, .apkg, PDFs de estudo)
+quizzes/
+output/
+audios/
+*.log
+logs/
+
+# Pasta de exemplos extraída (gerada pelo .exe — bundle tem original)
+# Mantém o original em exemplos/ pra rodar do código-fonte
+
+# PyInstaller build artifacts
+build/
+dist/
+
+# Config local (gerada pelo app a cada usuário)
+config_bizudeck.json
+config_quiz.json
+config_v2.json
+
+# IDE / ferramentas locais
+.claude/
+.idea/
+.vscode/
+
+# Arquivos temporários
+*.tmp
+*~

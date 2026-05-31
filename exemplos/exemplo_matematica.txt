@@ -1,0 +1,59 @@
+P> Quanto é 7 vezes 8?
+R> 56.
+
+P> Qual o resultado de 144 dividido por 12?
+A) 10
+B) 11
+C) 12
+D) 13
+*> C
+
+P> Quanto é 25% de 200?
+R> 50.
+
+P> Qual é o MMC de 4 e 6?
+A) 8
+B) 10
+C) 12
+D) 24
+*> C
+
+P> Quanto é 3/4 mais 1/2?
+A) 4/6
+B) 5/4
+C) 4/4
+D) 3/8
+*> B
+
+P> Qual é a área de um quadrado de lado 9 cm?
+R> 81 centímetros quadrados.
+
+P> Em uma regra de três simples, se 5 operários fazem uma obra em 12 dias, em quantos dias 10 operários fazem a mesma obra?
+A) 6 dias
+B) 10 dias
+C) 12 dias
+D) 24 dias
+*> A
+
+P> Resolva a equação: 2x + 5 = 15.
+R> x igual a 5.
+
+P> Qual é o perímetro de um retângulo com lados 6 e 4?
+A) 10
+B) 20
+C) 24
+D) 12
+*> B
+
+P> Quanto é 2 elevado à quinta potência?
+R> 32.
+
+P> Qual o valor de 30% somado a 50% de 200?
+A) 80
+B) 100
+C) 130
+D) 160
+*> D
+
+P> Defina o que é um número primo.
+R> Número natural maior que 1 divisível apenas por 1 e por ele mesmo.
