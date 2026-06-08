@@ -25,10 +25,14 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from tkinter import filedialog, messagebox
 
+import time
+
 import customtkinter as ctk
 import edge_tts
 import genanki
 import pygame
+
+import podcast as podcast_mod
 from reportlab.lib import colors as pdf_colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -231,7 +235,7 @@ def parse_quiz(texto: str) -> list[dict]:
         elif s.startswith("*>"):
             atual["tipo"] = "multipla"
             atual["letra_correta"] = s[2:].strip().upper()
-        elif re.match(r"^[A-Da-d]\)", s):
+        elif re.match(r"^[A-Ja-j]\)", s):
             letra = s[0].upper()
             texto_opc = s[2:].strip()
             atual.setdefault("opcoes", []).append(
@@ -591,6 +595,7 @@ class QuizApp(ctk.CTk):
         for key, label, icon in [
             ("criar", "Criar Quiz", "▶"),
             ("estudar", "Estudar", "🎓"),
+            ("podcast", "Podcast", "🎙"),
             ("config", "Configurações", "⚙"),
             ("sobre", "Sobre", "ℹ"),
         ]:
@@ -624,6 +629,7 @@ class QuizApp(ctk.CTk):
         self.views = {
             "criar": self._build_view_criar(),
             "estudar": self._build_view_estudar(),
+            "podcast": self._build_view_podcast(),
             "config": self._build_view_config(),
             "sobre": self._build_view_sobre(),
         }
@@ -1757,6 +1763,314 @@ class QuizApp(ctk.CTk):
         self.parciais = 0
         self.erros = 0
         self._renderizar_questao_atual()
+
+    # -------- View: PODCAST --------
+    def _build_view_podcast(self) -> ctk.CTkFrame:
+        view = ctk.CTkFrame(self.main, fg_color="transparent")
+
+        # Cabeçalho
+        ctk.CTkLabel(
+            view, text="🎙  Modo Podcast",
+            font=FONT_TITLE, text_color=COLOR_TEXT,
+        ).pack(anchor="w", pady=(0, 4))
+        ctk.CTkLabel(
+            view,
+            text=(
+                "Cole ou edite um script de podcast no formato E>/C> e gere "
+                "um único MP3 com duas vozes alternadas. Ótimo pra ouvir "
+                "revisão durante a caminhada, no carro etc."
+            ),
+            font=FONT_LABEL, text_color=COLOR_TEXT_DIM,
+            wraplength=820, justify="left",
+        ).pack(anchor="w", pady=(0, 10))
+
+        # Formato (caixinha de ajuda colapsável simples)
+        ajuda = ctk.CTkFrame(view, fg_color=COLOR_CARD, corner_radius=10)
+        ajuda.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(
+            ajuda,
+            text=(
+                "Formato:  T> Título   |   TEMA> Tema do episódio   |   "
+                "E> Fala do Entrevistador   |   C> Fala do Convidado"
+            ),
+            font=("Consolas", 11), text_color=COLOR_ACCENT,
+            wraplength=820, justify="left",
+        ).pack(anchor="w", padx=12, pady=10)
+
+        # Editor de texto
+        editor_frame = ctk.CTkFrame(view, fg_color=COLOR_CARD, corner_radius=10)
+        editor_frame.pack(fill="both", expand=True, pady=(0, 12))
+        ctk.CTkLabel(
+            editor_frame, text="Script do podcast",
+            font=FONT_H2, text_color=COLOR_TEXT,
+        ).pack(anchor="w", padx=12, pady=(10, 4))
+        self.pod_textbox = ctk.CTkTextbox(
+            editor_frame, font=("Consolas", 12),
+            fg_color="#0f0d0a", text_color=COLOR_TEXT,
+            border_width=1, border_color=COLOR_BORDER,
+            wrap="word",
+        )
+        self.pod_textbox.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+        # Placeholder de exemplo
+        self.pod_textbox.insert("1.0", (
+            "T> Engenharia de Software — Episódio 1\n"
+            "TEMA> Fundamentos e camadas\n\n"
+            "E> Bom dia! Hoje vamos revisar fundamentos de Engenharia de Software.\n"
+            "C> Tema clássico, vamos lá.\n"
+            "E> Primeira pergunta: quais são as quatro camadas da Engenharia de Software?\n"
+            "C> Qualidade, processo, métodos e ferramentas.\n"
+            "E> E qual é a camada base que sustenta tudo?\n"
+            "C> A camada de processo.\n"
+        ))
+
+        # Linha de controles: vozes
+        linha_voz = ctk.CTkFrame(view, fg_color="transparent")
+        linha_voz.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkLabel(
+            linha_voz, text="Voz Entrevistador (E):",
+            font=FONT_LABEL, text_color=COLOR_TEXT,
+        ).pack(side="left", padx=(0, 6))
+        self.pod_voz_e = ctk.CTkOptionMenu(
+            linha_voz, values=VOICES_PT,
+            font=FONT_INPUT, width=240,
+            fg_color=COLOR_CARD, button_color=COLOR_ACCENT,
+            button_hover_color=COLOR_ACCENT_HOVER,
+        )
+        self.pod_voz_e.set(self.config_data.get(
+            "voice_pergunta", "pt-BR-FranciscaNeural"
+        ))
+        self.pod_voz_e.pack(side="left", padx=(0, 16))
+
+        ctk.CTkLabel(
+            linha_voz, text="Voz Convidado (C):",
+            font=FONT_LABEL, text_color=COLOR_TEXT,
+        ).pack(side="left", padx=(0, 6))
+        self.pod_voz_c = ctk.CTkOptionMenu(
+            linha_voz, values=VOICES_PT,
+            font=FONT_INPUT, width=240,
+            fg_color=COLOR_CARD, button_color=COLOR_ACCENT,
+            button_hover_color=COLOR_ACCENT_HOVER,
+        )
+        self.pod_voz_c.set(self.config_data.get(
+            "voice_resposta", "pt-BR-AntonioNeural"
+        ))
+        self.pod_voz_c.pack(side="left")
+
+        # Linha de botões
+        linha_btn = ctk.CTkFrame(view, fg_color="transparent")
+        linha_btn.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkButton(
+            linha_btn, text="📂 Importar TXT", font=FONT_BTN, width=140,
+            fg_color=COLOR_CARD, hover_color=COLOR_CARD_HOVER,
+            text_color=COLOR_TEXT, command=self._pod_importar_txt,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            linha_btn, text="💾 Salvar TXT", font=FONT_BTN, width=140,
+            fg_color=COLOR_CARD, hover_color=COLOR_CARD_HOVER,
+            text_color=COLOR_TEXT, command=self._pod_salvar_txt,
+        ).pack(side="left", padx=(0, 8))
+
+        self.pod_btn_gerar = ctk.CTkButton(
+            linha_btn, text="🎙 Gerar Áudio Único", font=FONT_BTN, width=200,
+            fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_HOVER,
+            text_color=COLOR_BG, command=self._pod_gerar_clicado,
+        )
+        self.pod_btn_gerar.pack(side="left", padx=(0, 8))
+
+        self.pod_btn_play = ctk.CTkButton(
+            linha_btn, text="▶ Reproduzir", font=FONT_BTN, width=130,
+            fg_color=COLOR_SUCCESS, hover_color="#16a34a",
+            text_color=COLOR_BG, command=self._pod_reproduzir,
+            state="disabled",
+        )
+        self.pod_btn_play.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            linha_btn, text="⏹ Parar", font=FONT_BTN, width=100,
+            fg_color=COLOR_DANGER, hover_color="#c2392f",
+            text_color=COLOR_BG, command=self._pod_parar,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            linha_btn, text="📁 Abrir Pasta", font=FONT_BTN, width=130,
+            fg_color=COLOR_CARD, hover_color=COLOR_CARD_HOVER,
+            text_color=COLOR_TEXT, command=self._pod_abrir_pasta,
+        ).pack(side="left")
+
+        # Status + progresso
+        self.pod_status = ctk.CTkLabel(
+            view, text="Pronto. Edite o script e clique em Gerar Áudio Único.",
+            font=FONT_LABEL, text_color=COLOR_TEXT_DIM, anchor="w",
+        )
+        self.pod_status.pack(fill="x", pady=(0, 4))
+        self.pod_progress = ctk.CTkProgressBar(
+            view, fg_color=COLOR_CARD, progress_color=COLOR_ACCENT, height=8,
+        )
+        self.pod_progress.set(0)
+        self.pod_progress.pack(fill="x")
+
+        # Estado do podcast
+        self.pod_arquivo_gerado: str | None = None
+        self.pod_cancel = threading.Event()
+
+        return view
+
+    # -------- Handlers PODCAST --------
+    def _pod_importar_txt(self):
+        path = filedialog.askopenfilename(
+            title="Importar script de podcast",
+            filetypes=[("Texto", "*.txt"), ("Todos", "*.*")],
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                conteudo = f.read()
+            self.pod_textbox.delete("1.0", "end")
+            self.pod_textbox.insert("1.0", conteudo)
+            self.pod_status.configure(
+                text=f"📂 Importado: {os.path.basename(path)}"
+            )
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao importar: {e}")
+
+    def _pod_salvar_txt(self):
+        conteudo = self.pod_textbox.get("1.0", "end").strip()
+        if not conteudo:
+            messagebox.showwarning("Vazio", "Editor está vazio.")
+            return
+        path = filedialog.asksaveasfilename(
+            title="Salvar script de podcast",
+            defaultextension=".txt",
+            filetypes=[("Texto", "*.txt")],
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(conteudo)
+            self.pod_status.configure(
+                text=f"💾 Salvo: {os.path.basename(path)}"
+            )
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao salvar: {e}")
+
+    def _pod_gerar_clicado(self):
+        conteudo = self.pod_textbox.get("1.0", "end").strip()
+        if not conteudo:
+            messagebox.showwarning("Vazio", "Cole ou edite um script primeiro.")
+            return
+        try:
+            pc = podcast_mod.parse_podcast(conteudo)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao parsear script: {e}")
+            return
+        if not pc.falas:
+            messagebox.showwarning(
+                "Sem falas",
+                "Nenhuma fala encontrada. Use E> e C> nas linhas.",
+            )
+            return
+
+        # Nome do arquivo: do título do podcast ou timestamp
+        nome = safe_name(pc.titulo) if pc.titulo else f"podcast_{int(time.time())}"
+        pasta = os.path.join(OUTPUT_DIR, nome)
+        os.makedirs(pasta, exist_ok=True)
+        saida = os.path.join(pasta, f"{nome}.mp3")
+
+        self.pod_btn_gerar.configure(state="disabled", text="🎙 Gerando...")
+        self.pod_btn_play.configure(state="disabled")
+        self.pod_progress.set(0)
+        self.pod_cancel.clear()
+
+        threading.Thread(
+            target=self._pod_gerar_thread,
+            args=(pc, saida),
+            daemon=True,
+        ).start()
+
+    def _pod_gerar_thread(self, pc, saida: str):
+        def progresso(atual, total, msg):
+            frac = atual / total if total else 0
+            self.after(0, lambda: self.pod_progress.set(frac))
+            self.after(0, lambda m=msg: self.pod_status.configure(text=m))
+
+        try:
+            rate = format_rate(self.config_data.get("rate", -10))
+            voz_e = self.pod_voz_e.get()
+            voz_c = self.pod_voz_c.get()
+            podcast_mod.gerar_podcast_sync(
+                pc, voz_e, voz_c, rate, saida,
+                self.pod_cancel, progresso,
+            )
+            self.pod_arquivo_gerado = saida
+            duracao = podcast_mod.estimar_duracao_segundos(pc)
+            mins = int(duracao // 60)
+            secs = int(duracao % 60)
+            self.after(0, lambda: self.pod_status.configure(
+                text=(
+                    f"✓ Pronto! {len(pc.falas)} falas, ~{mins}:{secs:02d} min. "
+                    f"Salvo em: {saida}"
+                )
+            ))
+            self.after(0, lambda: self.pod_btn_play.configure(state="normal"))
+        except Exception as e:
+            log.exception("Falha ao gerar podcast")
+            self.after(0, lambda err=str(e): messagebox.showerror(
+                "Erro", f"Falha ao gerar: {err}"
+            ))
+            self.after(0, lambda: self.pod_status.configure(
+                text="❌ Falha ao gerar áudio."
+            ))
+        finally:
+            self.after(0, lambda: self.pod_btn_gerar.configure(
+                state="normal", text="🎙 Gerar Áudio Único"
+            ))
+
+    def _pod_reproduzir(self):
+        if not self.pod_arquivo_gerado or not os.path.exists(
+            self.pod_arquivo_gerado
+        ):
+            messagebox.showwarning("Sem áudio", "Gere o áudio antes.")
+            return
+        try:
+            if pygame.mixer.get_init() is None:
+                pygame.mixer.init()
+            pygame.mixer.music.stop()
+            try:
+                pygame.mixer.music.unload()
+            except Exception:
+                pass
+            pygame.mixer.music.load(self.pod_arquivo_gerado)
+            pygame.mixer.music.play()
+            self.pod_status.configure(text="▶ Reproduzindo...")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao reproduzir: {e}")
+
+    def _pod_parar(self):
+        try:
+            if pygame.mixer.get_init() is not None:
+                pygame.mixer.music.stop()
+        except Exception:
+            pass
+        self.pod_cancel.set()
+        self.pod_status.configure(text="⏹ Parado.")
+
+    def _pod_abrir_pasta(self):
+        path = (
+            os.path.dirname(self.pod_arquivo_gerado)
+            if self.pod_arquivo_gerado
+            else OUTPUT_DIR
+        )
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+        try:
+            os.startfile(path)  # Windows
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao abrir pasta: {e}")
 
     # -------- View: CONFIG --------
     def _build_view_config(self) -> ctk.CTkFrame:

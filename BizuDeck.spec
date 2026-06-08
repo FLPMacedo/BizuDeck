@@ -12,10 +12,10 @@ datas += collect_data_files('edge_tts')
 
 a = Analysis(
     ['BizuDeck.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=['podcast'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

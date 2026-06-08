@@ -35,6 +35,10 @@ gerar_manual.py
 _release_notes*.md
 _teste_*.py
 
+# PDFs usados em testes locais (não fazem parte do código)
+*.pdf
+!assets/manual/Manual_BizuDeck.pdf
+
 # Arquivos temporários
 *.tmp
 *~
